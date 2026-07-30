@@ -37,3 +37,27 @@ b"\xff\xff".decode("utf-8")
 Traceback (most recent call last):
   File "<stdin>", line 1, in <module>
 UnicodeDecodeError: 'utf-8' codec can't decode byte 0xff in position 0: invalid start byte
+
+
+## 2.5
+
+### tinystorys
+
+(a) reasonable
+
+Training time: 227.82 seconds
+Vocabulary size: 10000
+Number of merges: 9743
+Longest token id: 7342
+Longest token length: 15 bytes
+Longest token bytes: b' accomplishment'
+Maximum resident set size (kbytes): 1270992
+
+1000 - (256 + 1) = 9743
+
+(b)
+
+耗时来源：
+
+1.BPE merge：每轮都要遍历candidate_pair，并调用max找到频率最高（双标准）的 pair
+2.将所有单词转化为单byte tumple

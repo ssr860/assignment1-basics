@@ -162,3 +162,8 @@ cython_debug/
 .ruff_cache/
 *.zip
 *.prof
+
+# Local datasets and experiment outputs
+data/
+artifacts/
+*.prof
