@@ -33,10 +33,10 @@ def run_linear(
     """
 
     linear = layers.Linear(
-    in_features=d_in,
-    out_features=d_out,
-    device=weights.device,
-    dtype=weights.dtype,)
+                            in_features=d_in,
+                            out_features=d_out,
+                            device=weights.device,
+                            dtype=weights.dtype,)
 
     linear.load_state_dict({"weight": weights})
 
@@ -96,14 +96,22 @@ def run_swiglu(
     Returns:
         Float[Tensor, "... d_model"]: Output embeddings of the same shape as the input embeddings.
     """
-    # Example:
-    # If your state dict keys match, you can use `load_state_dict()`
-    # swiglu.load_state_dict(weights)
-    # You can also manually assign the weights
-    # swiglu.w1.weight.data = w1_weight
-    # swiglu.w2.weight.data = w2_weight
-    # swiglu.w3.weight.data = w3_weight
-    raise NotImplementedError
+    swiglu = layers.SwiGLU(
+        d_model = d_model,
+        d_ff = d_ff,
+        device = w1_weight.device,
+        dtype = w1_weight.dtype,
+    )
+
+    weights = {
+        "w1.weight": w1_weight,
+        "w2.weight": w2_weight,
+        "w3.weight": w3_weight,
+    }
+
+    swiglu.load_state_dict(weights)
+
+    return swiglu(in_features)
 
 
 def run_scaled_dot_product_attention(
@@ -124,7 +132,9 @@ def run_scaled_dot_product_attention(
     Returns:
         Float[Tensor, " ... queries d_v"]: Output of SDPA
     """
-    raise NotImplementedError
+    return layers.scaled_dot_product_attention(
+        Q,K,V,mask,
+    )
 
 
 def run_multihead_self_attention(
@@ -158,7 +168,24 @@ def run_multihead_self_attention(
         Float[Tensor, " ... sequence_length d_model"]: Tensor with the output of running your optimized, batched multi-headed attention
         implementation with the given QKV projection weights and input features.
     """
-    raise NotImplementedError
+
+    mha = layers.MultiHeadSelfAttention(
+        d_model=d_model,
+        num_heads=num_heads,
+        device=in_features.device,
+        dtype=in_features.dtype,
+    )
+
+    weights = {
+        "q_proj.weight": q_proj_weight,
+        "k_proj.weight": k_proj_weight,
+        "v_proj.weight": v_proj_weight,
+        "output_proj.weight": o_proj_weight,
+    }
+   
+    mha.load_state_dict(weights)
+
+    return mha(in_features)
 
 
 def run_multihead_self_attention_with_rope(
@@ -198,7 +225,25 @@ def run_multihead_self_attention_with_rope(
         Float[Tensor, " ... sequence_length d_model"]: Tensor with the output of running your optimized, batched multi-headed attention
         implementation with the given QKV projection weights and input features.
     """
-    raise NotImplementedError
+    mha = layers.MultiHeadSelfAttention(
+        d_model,
+        num_heads,
+        in_features.device,
+        in_features.dtype,
+        theta,
+        max_seq_len,
+        )
+
+    weights = {
+        "q_proj.weight": q_proj_weight,
+        "k_proj.weight": k_proj_weight,
+        "v_proj.weight": v_proj_weight,
+        "output_proj.weight": o_proj_weight,
+    }
+   
+    mha.load_state_dict(weights)
+
+    return mha(in_features, token_positions,)
 
 
 def run_rope(
@@ -220,7 +265,14 @@ def run_rope(
     Returns:
         Float[Tensor, " ... sequence_length d_k"]: Tensor with RoPEd input.
     """
-    raise NotImplementedError
+    rope = layers.RoPE(
+        theta, 
+        d_k,        
+        max_seq_len, 
+        device = in_query_or_key.device,
+    )
+
+    return rope(in_query_or_key, token_positions)
 
 
 def run_transformer_block(
@@ -460,7 +512,7 @@ def run_softmax(in_features: Float[Tensor, " ..."], dim: int) -> Float[Tensor, "
         Float[Tensor, "..."]: Tensor of with the same shape as `in_features` with the output of
         softmax normalizing the specified `dim`.
     """
-    raise NotImplementedError
+    return layers.softmax(in_features,dim)
 
 
 def run_cross_entropy(
