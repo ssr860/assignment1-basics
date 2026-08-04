@@ -11,7 +11,7 @@ from torch import Tensor
 
 from cs336_basics.get_tokenizer import Tokenizer
 from cs336_basics.train_bpe import run_train_bpe as i_run_train_bpe
-from cs336_basics import layers
+from cs336_basics import layers, blocks
 
 def run_linear(
     d_in: int,
@@ -345,7 +345,19 @@ def run_transformer_block(
         Float[Tensor, "batch sequence_length d_model"] Tensor with the output of
         running the Transformer block on the input features while using RoPE.
     """
-    raise NotImplementedError
+    block = blocks.TransformerBlock(
+        d_model,
+        num_heads,
+        d_ff,
+        max_seq_len,
+        theta,
+        device=in_features.device,
+        dtype=in_features.dtype,
+    )
+
+    block.load_state_dict(weights, strict = True)
+
+    return block(in_features)
 
 
 def run_transformer_lm(
@@ -427,7 +439,21 @@ def run_transformer_lm(
         Float[Tensor, "batch_size sequence_length vocab_size"]: Tensor with the predicted unnormalized
         next-word distribution for each token.
     """
-    raise NotImplementedError
+    transformer = blocks.Transformer(
+        d_model = d_model,
+        num_heads = num_heads,
+        d_ff = d_ff,
+        max_seq_len = context_length,
+        theta = rope_theta,
+        vocab_size = vocab_size,
+        context_length = context_length,
+        num_layers = num_layers,
+        device=in_indices.device,
+    )
+
+    transformer.load_state_dict(weights, strict = True)
+
+    return transformer(in_indices)
 
 
 def run_rmsnorm(

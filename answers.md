@@ -61,3 +61,37 @@ Maximum resident set size (kbytes): 1270992
 
 1.BPE merge：每轮都要遍历candidate_pair，并调用max找到频率最高（双标准）的 pair
 2.将所有单词转化为单byte tumple
+
+
+### openweb
+
+(a) 
+Training time: 28407.27 seconds 
+Vocabulary size: 32000 
+Number of merges: 31743 
+Longest token id: 25822 
+Longest token length: 64 bytes 
+Longest token decoded: ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ
+
+reasonable:noisy or incorrectly text exists.
+
+compare（抽取了十篇文档）:
+
+TinyStories tokenizer on TinyStories :     7775 bytes,     1930 tokens, 4.0285 bytes/token
+OWT tokenizer        on TinyStories :     7775 bytes,     2003 tokens, 3.8817 bytes/token
+TinyStories tokenizer on OpenWebText :    50180 bytes,    16206 tokens, 3.0964 bytes/token
+OWT tokenizer        on OpenWebText :    50180 bytes,    11877 tokens, 4.2250 bytes/token
+
+在tinystory上 owttokenizer有轻微劣势 但在owt上有明显优势 说明其泛化能力更强 
+
+eg：
+
+TinyStories tokenizer (35 tokens):
+[b'Three', b' s', b'en', b'i', b'or', b' adm', b'in', b'ist', b'r', b'ation', b' offic', b'ial', b's', b' told', b' Re', b'ut', b'ers', b' that', b' the', b' pres', b'ident', b' is', b' consid', b'ering', b' putting', b' an', b' import', b' tar', b'iff', b' on', b' Ch', b'ine', b'se', b' steel', b'.']
+
+OpenWebText tokenizer (19 tokens):
+[b'Three', b' senior', b' administration', b' officials', b' told', b' Reuters', b' that', b' the', b' president', b' is', b' considering', b' putting', b' an', b' import', b' tariff', b' on', b' Chinese', b' steel', b'.']
+
+
+uint16：0 65535 token-size:roughly 10000/32000
+
