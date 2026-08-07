@@ -1,9 +1,14 @@
+from __future__ import annotations
+
 import math
-import torch
-import numpy as np
 import os
-import typing
+from collections.abc import Iterable
 from pathlib import Path
+from typing import BinaryIO, IO
+
+import numpy as np
+import torch
+
 
 def learning_rate_schedule(
     step: int,
@@ -28,7 +33,7 @@ def learning_rate_schedule(
 
 
 def gradient_clipping(
-    parameters: [torch.nn.Parameter], 
+    parameters: Iterable[torch.nn.Parameter], 
     max_l2_norm: float
     ) -> None:
     eps = 1e-6
@@ -42,7 +47,7 @@ def gradient_clipping(
         return
 
     total_norm = torch.sqrt(
-        sum(torch.sum(param.grad.detach() ** 2) for param in parameters)
+        sum(torch.sum(param.grad.detach().to(torch.float32).pow(2) for param in parameters)
     )
 
     if total_norm > max_l2_norm:
@@ -53,7 +58,7 @@ def gradient_clipping(
                 param.grad.mul_(scale)
 
 
-def data_loading(
+def get_batch(
     dataset, 
     batch_size: int, 
     context_length: int, 
@@ -61,7 +66,7 @@ def data_loading(
 ) -> tuple[torch.Tensor, torch.Tensor]:
     start = torch.randint(
         low = 0,
-        high = len(dataset) - context_length-1,
+        high = len(dataset) - context_length,
         size = (batch_size,)
     )
 

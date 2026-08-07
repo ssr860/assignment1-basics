@@ -74,6 +74,12 @@ class Embedding(nn.Module):
         )
 
     def forward(self, token_ids: torch.Tensor) -> torch.Tensor:
+
+        if token_ids.dtype not in (torch.int32, torch.int64):
+        raise TypeError(
+            f"Embedding indices must be int32 or int64, got {token_ids.dtype}"
+        )
+
         return self.weight[token_ids]    
 
 
@@ -106,7 +112,9 @@ class RMSNorm(nn.Module):
             torch.mean(x**2, dim = -1, keepdim=True)
         )
 
-        result = x * self.weight / rms_x
+        weight_float = self.weight.to(torch.float32)
+
+        result = x * weight_float / rms_x
         return result.to(in_type)
 
 
@@ -144,17 +152,14 @@ class RoPE(nn.Module):
         self.theta = theta
         self.d_k = d_k
         self.max_seq_len = max_seq_len
-        self.device = device  
 
-        k = - torch.arange(0, d_k, 2, device = device)/d_k
+        k = - torch.arange(0, d_k, 2, device = device, dtype=torch.float32,)/d_k
         k = theta**(k)
-        p = torch.arange(0, max_seq_len, device = device, dtype = torch.float32)
+        p = torch.arange(max_seq_len, device = device, dtype = torch.float32)
         m = torch.outer(p, k)
 
-        self.cos = torch.cos(m) 
-        self.sin = torch.sin(m)
-        self.register_buffer("cos_cache", self.cos, persistent = False )
-        self.register_buffer("sin_cache", self.sin, persistent = False)    
+        self.register_buffer("cos_cache", torch.cos(m), persistent = False )
+        self.register_buffer("sin_cache", torch.sin(m), persistent = False)    
     
     def forward(self, 
         x: torch.Tensor, 
@@ -165,12 +170,12 @@ class RoPE(nn.Module):
         cos = self.cos_cache[token_positions]
         sin = self.sin_cache[token_positions]
 
-        # while cos.ndim < x.ndim:
-        #     cos = cos.unsqueeze(-3)
-        #     sin = sin.unsqueeze(-3)
+        while cos.ndim < x.ndim:
+            cos = cos.unsqueeze(-3)
+            sin = sin.unsqueeze(-3)
 
-        # cos = cos.to(device=x.device, dtype=x.dtype)
-        # sin = sin.to(device=x.device, dtype=x.dtype)
+        cos = cos.to(device=x.device, dtype=x.dtype)
+        sin = sin.to(device=x.device, dtype=x.dtype)
 
         x_e = cos*x_even - sin*x_odd
         x_o = sin*x_even + cos*x_odd
@@ -183,27 +188,70 @@ class RoPE(nn.Module):
         return output
 
 def softmax(x: torch.Tensor, i:int):
-    sub = torch.max(x, dim = i, keepdim = True).values
-    x = x - sub
-    e_x = torch.exp(x)
-    d = torch.sum(e_x, dim = i, keepdim = True)
-    return e_x/d
+    i_type = x.dtype
 
+    if x.dtype in (torch.float16, torch.bfloat16):
+        x = x.to(torch.float32)
+
+    maxm = torch.max(x, dim=dim, keepdim=True).values
+    shifted = x - maxm
+
+    exp = torch.exp(shifted)
+    probs = exp / exp.sum(
+        dim=dim,
+        keepdim=True,
+    )
+
+    return probs.to(i_type)
+
+
+# def cross_entropy(
+#     inputs: Float[Tensor, " batch_size vocab_size"], 
+#     targets: Int[Tensor, " batch_size"]):
+#     m = torch.max(inputs, dim = -1, keepdim = True).values
+#     shift_l = inputs - m
+
+#     a = torch.log(torch.sum(torch.exp(shift_l),dim = -1, keepdim = True))
+#     j = torch.gather(
+#         shift_l,
+#         dim = -1,
+#         index = targets.unsqueeze(-1),
+#     ).squeeze(1)
+
+#     return (a - j).mean()
 
 def cross_entropy(
-    inputs: Float[Tensor, " batch_size vocab_size"], 
-    targets: Int[Tensor, " batch_size"]):
-    m = torch.max(inputs, dim = -1, keepdim = True).values
-    shift_l = inputs - m
+    inputs: Float[Tensor, "... vocab_size"],
+    targets: Int[Tensor, "..."],
+) -> Float[Tensor, ""]:
+    if inputs.shape[:-1] != targets.shape:
+        raise ValueError(
+            f"Logits shape {inputs.shape} is incompatible "
+            f"with target shape {targets.shape}"
+        )
 
-    a = torch.log(torch.sum(torch.exp(shift_l),dim = -1, keepdim = True))
-    j = torch.gather(
-        shift_l,
-        dim = -1,
-        index = targets.unsqueeze(-1),
-    ).squeeze(1)
+    if inputs.dtype in (torch.float16, torch.bfloat16):
+        logits = inputs.to(torch.float32)
+    else:
+        logits = inputs
 
-    return (a - j).mean()
+    targets = targets.to(torch.long)
+
+    maximum = logits.max(dim=-1, keepdim=True).values
+    shifted_logits = logits - maximum
+
+    log_normalizer = torch.log(
+        torch.exp(shifted_logits).sum(dim=-1)
+    )
+
+    target_logits = torch.gather(
+        shifted_logits,
+        dim=-1,
+        index=targets.unsqueeze(-1),
+    ).squeeze(-1)
+
+    losses = log_normalizer - target_logits
+    return losses.mean()
     
 
 def scaled_dot_product_attention(
@@ -231,10 +279,18 @@ class MultiHeadSelfAttention(nn.Module):
         device: torch.device | None = None,
         dtype: torch.dtype | None = None,
         theta: float | None = None,
-        max_len: int | None = None) -> None:
+        max_seq_len: int | None = None) -> None:
         super().__init__()
 
-        assert d_model % num_heads == 0
+        if d_model % num_heads != 0:
+            raise ValueError(
+                "d_model is not divisible by num_heads."
+            )
+
+        if (theta is None) != (max_seq_len is None):
+            raise ValueError(
+                "theta and max_seq_len must either both be provided or both be None"
+            )
 
         self.d_model = d_model
         self.num_heads = num_heads

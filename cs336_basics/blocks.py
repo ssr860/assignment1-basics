@@ -67,7 +67,6 @@ class Transformer(nn.Module):
         d_model: int,
         num_heads: int,
         d_ff: int,
-        max_seq_len: int,
         theta: float,
         vocab_size: int,
         context_length: int,
@@ -82,8 +81,6 @@ class Transformer(nn.Module):
         self.d_ff = d_ff
         self.max_seq_len = max_seq_len
         self.theta = theta
-        self.device = device
-        self.dtype = dtype
         self.vocab_size = vocab_size
         self.context_length = context_length
         self.num_layers = num_layers
@@ -125,12 +122,24 @@ class Transformer(nn.Module):
 
     def forward(
         self,
-        in_indices,):
-        
+        in_indices: Int[Tensor, "batch sequence_length"],
+        )-> Float[Tensor, "batch sequence_length vocab_size"]:
+    
+        if in_indices.ndim != 2:
+            raise ValueError(
+                f"Expected token IDs with shape [batch, sequence], "
+                f"got {in_indices.shape}"
+            )
+
         if in_indices.shape[-1] > self.context_length:
             raise ValueError(
                 f"Input sequence length {in_indices.shape[-1]} exceeds "
                 f"context length {self.context_length}."
+            )
+
+        if in_indices.dtype not in (torch.int32, torch.int64):
+            raise TypeError(
+                f"Token IDs must be int32 or int64, but got {in_indices.dtype}"
             )
 
         x = self.token_embeddings(in_indices)
