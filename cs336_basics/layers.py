@@ -188,6 +188,21 @@ def softmax(x: torch.tensor, i:int):
     return e_x/d
 
 
+def cross_entropy(
+    inputs: Float[Tensor, " batch_size vocab_size"], 
+    targets: Int[Tensor, " batch_size"]):
+    m = torch.max(inputs, dim = -1, keepdim = True).values
+    shift_l = inputs - m
+
+    a = torch.log(torch.sum(torch.exp(shift_l),dim = -1, keepdim = True))
+    j = torch.gather(
+        shift_l,
+        dim = -1,
+        index = targets.unsqueeze(-1),
+    ).squeeze(1)
+
+    return (a - j).mean()
+
 def scaled_dot_product_attention(
     Q: Float[Tensor, " ... queries d_k"],
     K: Float[Tensor, " ... keys d_k"],
