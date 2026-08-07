@@ -134,7 +134,6 @@ def main() -> None:
             checkpoint_path=args.checkpoint_path,
             model=model,
             optimizer=optim,
-            device=device,
         )
 
         print(
@@ -157,7 +156,7 @@ def main() -> None:
         for parameter_group in optim.param_groups:
             parameter_group["lr"] = learning_rate
 
-        inputs, targets = training_utilities.get_batch(
+        inputs, targets = training_utilities.data_loading(
             dataset=train_data,
             batch_size=args.batch_size,
             context_length=args.context_length,
@@ -231,7 +230,7 @@ def main() -> None:
             )
 
     save_checkpoint(
-        checkpoint_path=args.checkpoint_path,
+        out=args.checkpoint_path,
         model=model,
         optimizer=optim,
         step=args.max_steps,

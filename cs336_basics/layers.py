@@ -1,9 +1,11 @@
 from __future__ import annotations
-from typing import Any
 
 import math
 import torch
 from torch import nn
+
+from jaxtyping import Bool, Float, Int
+from torch import Tensor
 
 from einops import einsum, rearrange
 
@@ -180,7 +182,7 @@ class RoPE(nn.Module):
 
         return output
 
-def softmax(x: torch.tensor, i:int):
+def softmax(x: torch.Tensor, i:int):
     sub = torch.max(x, dim = i, keepdim = True).values
     x = x - sub
     e_x = torch.exp(x)
@@ -202,6 +204,7 @@ def cross_entropy(
     ).squeeze(1)
 
     return (a - j).mean()
+    
 
 def scaled_dot_product_attention(
     Q: Float[Tensor, " ... queries d_k"],
@@ -277,8 +280,8 @@ class MultiHeadSelfAttention(nn.Module):
 
 
     def forward(self, 
-    x:torch.tensor, 
-    token_positions: torch.tensor | None = None,) -> torch.tensor:
+    x:torch.Tensor, 
+    token_positions: torch.Tensor | None = None,) -> torch.Tensor:
         sequence_length = x.shape[-2]
 
         Q = self.q_proj(x)

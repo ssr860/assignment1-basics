@@ -1,24 +1,30 @@
 import math
 import torch
-import numpy
+import numpy as np
 import os
 import typing
+from pathlib import Path
 
 def learning_rate_schedule(
-    t: int,
-    alpha_max: float,
-    alpha_min: float,
-    T_w: int,
-    T_c: int,
+    step: int,
+    max_lr: float,
+    min_lr: float,
+    warmup_steps: int,
+    decay_end_step: int,
     ):
-    if t < T_w:
-        return t*alpha_max/T_w
+    if step < warmup_steps:
+        return step*max_lr/warmup_steps
     
-    elif t > T_c:
-        return alpha_min
+    elif step > decay_end_step:
+        return min_lr
 
     else:
-        return alpha_min+(alpha_max-alpha_min)*(1+math.cos((t-T_w)*math.pi/(T_c-T_w)))/2
+        decay_ratio = (step - warmup_steps) / (
+        decay_end_step - warmup_steps
+        )
+        cosine_factor = 0.5 * (1.0 + math.cos(math.pi * decay_ratio))
+
+        return min_lr + (max_lr - min_lr) * cosine_factor
 
 
 def gradient_clipping(
