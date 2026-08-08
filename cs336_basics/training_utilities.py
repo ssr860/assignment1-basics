@@ -47,7 +47,14 @@ def gradient_clipping(
         return
 
     total_norm = torch.sqrt(
-        sum(torch.sum(param.grad.detach().to(torch.float32).pow(2) for param in parameters)
+        sum(
+            parameter.grad.detach()
+            .to(torch.float32)
+            .pow(2)
+            .sum()
+            for parameter in parameters
+            if parameter.grad is not None
+        )
     )
 
     if total_norm > max_l2_norm:
@@ -110,7 +117,7 @@ def save_checkpoint(
 def load_checkpoint(
     src: str | os.PathLike | typing.BinaryIO | typing.IO[bytes],  
     model: torch.nn.Module,  
-    optimizer: torch.optim.Optimizer,
+    optimizer: torch.optim.Optimizer | None = None,
 ):
     checkpoint = torch.load(src)
 
