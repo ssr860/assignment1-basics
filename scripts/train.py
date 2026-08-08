@@ -64,8 +64,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--rope-theta", type=float, default=10_000.0)
 
     # Optimization configuration.
-    parser.add_argument("--batch-size", type=int, default=32)
-    parser.add_argument("--max-steps", type=int, default=10_000)
+    parser.add_argument("--batch-size", type=int, default=64)
+    parser.add_argument("--max-steps", type=int, default=20_000)
     parser.add_argument("--max-lr", type=float, default=3e-4)
     parser.add_argument("--min-lr", type=float, default=3e-5)
     parser.add_argument("--warmup-steps", type=int, default=500)
